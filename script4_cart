@@ -10,16 +10,18 @@ while IFS= read -r  line
 do
 	iduser=$(echo $line | awk -F"|" '{print $1}')
 	date=$(bash ./rand_dates.sh 1 1 2020 2022)
-	psql -d fdd2db -c "SELECT book_id, percentil FROM percentil order by RANDOM() limit $(((RANDOM%10)+1))" | sed '1d' | sed '1d' | sed 's| ||g' | head -n -2 | sed "s/^/|$iduser|/g" | sed "s/$/|$date/g" | sed "s/^/$cart_id/g" >> cart.csv
+	psql -d fdd2db -c "SELECT book_id, percentil FROM percentil order by RANDOM() limit $(((RANDOM%10)+1))" | sed '1d' | sed '1d' | sed 's| ||g' | head -n -2 | sed "s/^/|$iduser|/g" | sed "s/$/|$date/g" | sed "s/^/$cart_id/g" >> cart.csv 
+	cat cart.csv | grep "$iduser.*$date" | sed "s|$date|exp|g" >> cart.csv
 	cart_id=$((cart_id + 1))
 done < user.csv
 
+cat cart.csv | nl | sed 's/ //g' | sed -r 's/\s+/|/' > cart
 # ----------------------------------------
 # Crear tabla 'cart'
 # ----------------------------------------
 
 echo "Creating table cart"
-psql -d fdd2db -c "create table if not exists cart (cart_id serial primary key, user_id integer, product_id integer, percentil integer, purchase_date date)"
+psql -d fdd2db -c "create table if not exists cart (id serial primary key, cart_id integer, user_id integer, product_id integer, percentil integer, purchase_date date)"
 #Borrado los datos anteriores de la tabla
 psql -d fdd2db -c "TRUNCATE cart"
 
@@ -28,5 +30,5 @@ psql -d fdd2db -c "TRUNCATE cart"
 # ----------------------------------------
 
 echo "Populating table cart"
-psql -d fdd2db -c "\copy cart from 'cart.csv' delimiter '|'"
-psql -d fdd2db -c "select * from cart"
+psql -d fdd2db -c "\copy cart from 'cart' delimiter '|'"
+psql -d fdd2db -c "select cart_id, user_id, product_id, percentil, purchase_date from cart"
