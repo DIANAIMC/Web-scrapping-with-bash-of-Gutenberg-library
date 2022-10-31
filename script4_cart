@@ -9,9 +9,12 @@ cart_id=1
 while IFS= read -r  line
 do
 	iduser=$(echo $line | awk -F"|" '{print $1}')
-	date=$(bash ./rand_dates.sh 1 1 2020 2022)
-	psql -d fdd2db -c "SELECT book_id, percentil FROM percentil order by RANDOM() limit $(((RANDOM%10)+1))" | sed '1d' | sed '1d' | sed 's| ||g' | head -n -2 | sed "s/^/|$iduser|/g" | sed "s/$/|$date/g" | sed "s/^/$cart_id/g" >> cart.csv 
-	cat cart.csv | grep "$iduser.*$date" | sed "s|$date|exp|g" >> cart.csv
+	date=$(python ./fechapython)
+	psql -d fdd2db -c "SELECT book_id, percentil FROM percentil order by RANDOM() limit $(((RANDOM%10)+1))" | sed '1d' | sed '1d' | sed 's| ||g' | head -n -2 > actual
+	psql -d fdd2db -c "SELECT book_id, percentil FROM percentil order by RANDOM() limit $(((RANDOM%10)+1))" | sed '1d' | sed '1d' | sed 's| ||g' | head -n -2 | sed "s/^/|$iduser|/g" | sed "s/$/|$date/g" | sed "s/^/$cart_id/g" >> cart.csv
+	prom=$(bash ./promedio)
+	date2=$(python ./exp_delta $prom $date | cut -f1 -d" ")
+	cat cart.csv | grep "$iduser.*$date" | sed "s|$date|$date2|g" >> cart.csv
 	cart_id=$((cart_id + 1))
 done < user.csv
 
